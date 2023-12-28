@@ -2,7 +2,6 @@
 
 For this lab I collaborated with Enrico Capuano (s317038)
 
-For this lab I collaborated with Minh Triet Ngo (s309062)
 
 The class TicTacToe defines the functioning of the game itself, giving a good print of the playing table.
 Moreover, it has methods to define a move and to check when the game is over and who is the winner. 
