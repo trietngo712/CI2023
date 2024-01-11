@@ -23,10 +23,10 @@ class QPlayer(Player):
         #int(0, 4), random.randint(0, 4))
         #move = random.choice([Move.TOP, Move.BOTTOM, Move.LEFT, Move.RIGHT])
         #return from_pos, move
-        self.env.current_player = 'O'
+        self.env.current_player = 'X'
         state = tuple(self.env.board.flatten().tolist())
         available_moves = self.env.available_moves()
-        return self.agent.choose_action(state, available_moves, play_as = 'O', playing = False)
+        return self.agent.choose_action(state, available_moves, play_as = 'X', playing = False)
 
 
 class Environment:

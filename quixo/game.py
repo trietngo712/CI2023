@@ -77,11 +77,13 @@ class Game(object):
         current_player_idx = 1
         winner = -1
         while winner < 0:
+            self.print()
             current_player_idx += 1
             current_player_idx %= len(players)
             ok = False
             while not ok:
                 from_pos, slide = players[current_player_idx].make_move(self)
+                print(from_pos, slide)
                 ok = self.__move(from_pos, slide, current_player_idx)
             winner = self.check_winner()
         return winner

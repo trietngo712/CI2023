@@ -38,8 +38,8 @@ if __name__ == '__main__':
         player1.env = env
 
         player2 = RandomPlayer()
-        winner = g.play(player2, player1)
-        if winner == 0:
+        winner = g.play(player1, player2)
+        if winner == 0: ##winner ==1 in case we are the second player
             counter+= 1
         g.print()
 
