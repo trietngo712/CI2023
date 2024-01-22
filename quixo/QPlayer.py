@@ -169,6 +169,8 @@ def train(episodes):
             
             agent.update_q_value(state, action, reward, next_state, player = player)
             state = next_state
+        
+        agent.epsilon.update()
     
     return agent
 
@@ -204,8 +206,10 @@ class EpsilonScheduler():
 
     def get(self):
         return_val = self.high - self.counter * self.step 
-        self.counter += 1
         return return_val
+    
+    def update(self):
+        self.counter += 1
     
 
 
