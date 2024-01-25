@@ -26,7 +26,7 @@ class MyPlayer(Player):
 if __name__ == '__main__':
 
     player1 = QPlayer()
-    player1.agent = train(1000)
+    player1.agent = train(10000)
     counter = 0
 
     for _ in range(100):

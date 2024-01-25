@@ -205,14 +205,14 @@ class EpsilonScheduler():
     def __init__(self, low, high, num_round):
         self.low = low
         self.high = high
-        self.num_round = num_round * 9
+        self.num_round = num_round * 25
         self.step = (high - low) / num_round
 
         self.counter = 0
 
     def get(self):
         return_val = self.high - self.counter * self.step 
-        return return_val
+        return return_val if return_val > self.low else self.low
     
     def update(self):
         self.counter += 1
@@ -311,7 +311,7 @@ def generate_augmentation(board, action):
         augmented_actions.append(rotated_action)
         augmented_actions.append(flipped_action)
 
-        return augmented_states, augmented_actions
+    return augmented_states, augmented_actions
         
 def rotate_and_flip(pos, i):
     x = pos[1]-2
