@@ -156,7 +156,9 @@ def train(episodes):
             player = env.current_player
             action = agent.choose_action(state, available_moves, play_as=player)
 
-            augmented_states, augmented_actions = generate_augmentation(deepcopy(env.board),deepcopy(action) )
+            augmented_states, augmented_actions = generate_augmentation(deepcopy(env.board),deepcopy(action))
+
+            #if env.current_player == 'X':
 
             env.make_move(action)
             next_state = tuple(env.board.flatten().tolist())
@@ -338,6 +340,18 @@ def rotate_and_flip(pos, i):
 
     return rotated_pos, flipped_pos
 
+def change(a):
+    x = np.zeros(a.shape, dtype= int)
+    for i in range(a.shape[0]):
+        for j in range(a.shape[1]):
+            if a[i][j] == 0:
+                x[i][j] = 1
+            elif a[i][j] == 1:
+                x[i][j] = 0
+            else:
+                x[i][j] = a[i][j]
+    
+    return x
 
 if __name__ == '__main__':
     for i in range(0,4):
