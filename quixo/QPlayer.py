@@ -25,15 +25,22 @@ class QPlayer(Player):
         #move = random.choice([Move.TOP, Move.BOTTOM, Move.LEFT, Move.RIGHT])
         #return from_pos, move
         self.env.current_player = 'X'
-        state = tuple(self.env.board.flatten().tolist())
+        player_id = 0
+        state = tuple(self.env.game.get_board().flatten().tolist())
+        #self.env.game.print()
         available_moves = self.env.available_moves()
-        return self.agent.choose_action(state, available_moves, play_as = 'X', playing = False)
+        going_to_win, action = one_move_to_win(self.env, player_id)
+        if not going_to_win:
+            action = self.agent.choose_action(state, available_moves, play_as = 'X', playing = True)
+        else:
+            print('-------------------one move for X to win-----------------------')
+        return action
 
 
 class Environment:
     def __init__(self):
         self.game = Game()
-        self.board = self.game._board 
+        #self.board = self.game._board 
         self.current_player = 'X'  # Player 'X' starts the game
 
     def print_board(self):
@@ -46,6 +53,8 @@ class Environment:
         for a in ACTION:
             if self.game.valid(from_pos=(a[0][0],a[0][1]), slide=a[1], player_id= player_id):
                 moves.append(a)
+        
+        random.shuffle(moves)
         return moves
 
     def make_move(self, action):
@@ -77,11 +86,11 @@ class Environment:
         if COUNTER == 100:
             y = True
             COUNTER = 0
-        return x is not None or y
+        #return x is not None or y
+        return x is not None
     
     def reset(self):
         self.game._board = np.ones((5, 5), dtype=np.uint8) * -1
-        self.board = self.game._board
         self.current_player = 'X'
 
 # Q-Learning agent to play Tic Tac Toe
@@ -92,6 +101,8 @@ class QLearningAgent:
         self.gamma = gamma  # Discount factor
         self.q_table = defaultdict(float)  # Q-table to store state-action values
         self.env = None
+        self.usefullness = 0
+
     
     def get_q_value(self, state, action):
         return self.q_table.get((state, action), 0.0)
@@ -130,7 +141,12 @@ class QLearningAgent:
 
         else:
             if play_as == 'X':
-                return max(available_moves, key=lambda a: self.get_q_value(state, a))
+                a = max(available_moves, key=lambda a: self.get_q_value(state, a))
+                #print(a)
+                if self.get_q_value(state, a) > 0:
+                    self.usefullness += 1
+
+                return a
             else:
                 return min(available_moves, key=lambda a: self.get_q_value(state, a))
             
@@ -149,29 +165,38 @@ def train(episodes):
     
     for episode in tqdm(range(episodes)):
         env.reset()
-        state = tuple(env.board.flatten().tolist())
+        state = tuple(env.game.get_board().flatten().tolist())
 
         while not env.game_over():
+            env.print_board()
             available_moves = env.available_moves()
             player = env.current_player
+            player_id = 0 if env.current_player == 'X' else 1
+            print(f'current player {player_id}')
+
+            #going_to_win, action = one_move_to_win(env, player_id)
+            #if not going_to_win:
+            #    action = agent.choose_action(state, available_moves, play_as=player)
             action = agent.choose_action(state, available_moves, play_as=player)
 
-            augmented_states, augmented_actions = generate_augmentation(deepcopy(env.board),deepcopy(action))
 
+            print(action)
+
+            augmented_states, augmented_actions = generate_augmentation(deepcopy(env.game.get_board()),deepcopy(action))
             #if env.current_player == 'X':
 
             env.make_move(action)
-            next_state = tuple(env.board.flatten().tolist())
+            next_state = tuple(env.game.get_board().flatten().tolist())
             
             if env.check_winner() == 'X':
                 reward = 1
-
 
             elif env.check_winner() == 'O':
                 reward = -1
 
             else:
-                reward = intermediate_reward(env, player)
+                #reward = intermediate_reward(env, player)
+                reward = 0
             
             for state, action in zip(augmented_states, augmented_actions):
                 agent.update_q_value(state, action, reward, next_state, player = player)
@@ -207,7 +232,7 @@ class EpsilonScheduler():
     def __init__(self, low, high, num_round):
         self.low = low
         self.high = high
-        self.num_round = num_round * 25
+        self.num_round = num_round
         self.step = (high - low) / num_round
 
         self.counter = 0
@@ -301,9 +326,9 @@ def generate_augmentation(board, action):
         if slide == Move.LEFT or slide == Move.RIGHT:
             flipped_slide = slide
         elif slide == Move.TOP:
-            flipped_slide = Move.RIGHT
-        else:
             flipped_slide = Move.BOTTOM
+        else:
+            flipped_slide = Move.TOP
 
         rotated_action = ((rotated_pos[0],rotated_pos[1]), rotated_slide)
         flipped_action = ((flipped_pos[0],flipped_pos[1]), flipped_slide)
@@ -316,8 +341,8 @@ def generate_augmentation(board, action):
     return augmented_states, augmented_actions
         
 def rotate_and_flip(pos, i):
-    x = pos[1]-2
-    y = pos[0]-2
+    x = pos[0]-2
+    y = pos[1]-2
 
     rotated_xy = None
     flipped_xy = None
@@ -335,8 +360,8 @@ def rotate_and_flip(pos, i):
         rotated_xy = (y, -x)
         flipped_xy = (y, x)
     
-    rotated_pos = (rotated_xy[1] + 2, rotated_xy[0] + 2)
-    flipped_pos = (flipped_xy[1] + 2, flipped_xy[0] + 2)
+    rotated_pos = (rotated_xy[0] + 2, rotated_xy[1] + 2)
+    flipped_pos = (flipped_xy[0] + 2, flipped_xy[1] + 2)
 
     return rotated_pos, flipped_pos
 
@@ -353,8 +378,80 @@ def change(a):
     
     return x
 
+
+def one_move_to_win(env, player_id):
+    board = env.game.get_board()
+
+    #vertical
+    for col in range(5):
+        if np.sum(board[:, col] == player_id) == 4:
+            row = np.argwhere(board[:,col] != player_id).ravel()[0]
+            if col > 0:
+                if board[row, col-1] == player_id and np.any(np.logical_or(board[row,col:] == player_id, board[row,col:] == -1)):
+                    selected = np.argwhere(np.logical_or(board[row,:] == player_id, board[row,:] == -1)).ravel()
+                    selected = selected[selected >= col][0]
+
+                    if selected == 0 or selected == 4:
+                        return True, ((selected,row), Move.LEFT)
+            if col < 4:
+                if board[row, col+1] == player_id and np.any(np.logical_or(board[row,:col] == player_id, board[row,:col] == -1)):
+                    selected = np.argwhere(np.logical_or(board[row,:] == player_id, board[row,:] == -1)).ravel()
+                    selected = selected[selected <= col][0]
+
+                    if selected == 0 or selected == 4:
+                        return True, ((selected,row), Move.RIGHT)
+
+                            
+    #horizontal
+    for row in range(5):
+        if np.sum(board[row, :] == player_id) == 4:
+            col = np.argwhere(board[row,:] != player_id).ravel()[0]
+            if row > 0:
+                if board[row - 1, col] == player_id and np.any(np.logical_or(board[row:,col] == player_id, board[row:,col] == -1)):
+                    selected = np.argwhere(np.logical_or(board[:,col] == player_id, board[:,col] == -1)).ravel()
+                    selected = selected[selected >= row][0]
+
+                    if selected == 0 or selected == 4:
+                        return True, ((col,selected), Move.TOP)
+            if row < 4:
+                if board[row + 1, col] == player_id and np.any(np.logical_or(board[:row,col] == player_id, board[:row,col] == -1)):
+                    selected = np.argwhere(np.logical_or(board[:,4] == player_id, board[:,4] == -1)).ravel()
+                    selected = selected[selected <= row][0]
+
+                    if selected == 0 or selected == 4:
+                        return True, ((col,selected), Move.BOTTOM)
+            
+    #Diagonal
+    if board[0][0] + board[1][1] + board[2][2] + board[3][3] == 4:
+        if board[3][4] == player_id and board[4][4] == -1:
+            return True, ((4,4), Move.TOP)
+        if board[4][3] == player_id and board[4][4] == -1:
+            return True, ((4,4), Move.LEFT)
+    
+    if board[1][1] + board[2][2] + board[3][3] + board[4][4] == 4:
+        if board[0][1] == player_id and board[0][0] == -1:
+            return True, ((0,0), Move.RIGHT)
+        if board[1][0] == player_id and board[0][0] == -1:
+            return True, ((0,0), Move.BOTTOM)
+    
+    if board[0][4] + board[1][3] + board[2][2] + board[3][1] == 4:
+        if board[3][0] == player_id and board[4][0] == -1:
+            return True, ((0,4), Move.TOP)
+        if board[4][1] == player_id and board[4][0] == -1:
+            return True, ((0,4), Move.RIGHT)
+    
+    if board[1][3] + board[2][2] + board[3][1] + board[4][0] == 4:
+        if board[0][3] == player_id and board[0][4] == -1:
+            return True, ((4,0), Move.LEFT)
+        if board[1][4] == player_id and board[0][4] == -1:
+            return True, ((4,0), Move.BOTTOM)
+    
+    return False, None
+        
+
+        
 if __name__ == '__main__':
     for i in range(0,4):
-        print(rotate_and_flip((0,0),i))
+        print(rotate_and_flip((3,0),i))
  
          
