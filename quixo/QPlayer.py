@@ -34,6 +34,7 @@ class QPlayer(Player):
             action = self.agent.choose_action(state, available_moves, play_as = 'X', playing = True)
         else:
             print('-------------------one move for X to win-----------------------')
+            print(action)
         return action
 
 
@@ -386,70 +387,129 @@ def one_move_to_win(env, player_id):
     for col in range(5):
         if np.sum(board[:, col] == player_id) == 4:
             row = np.argwhere(board[:,col] != player_id).ravel()[0]
-            if col > 0:
-                if board[row, col-1] == player_id and np.any(np.logical_or(board[row,col:] == player_id, board[row,col:] == -1)):
-                    selected = np.argwhere(np.logical_or(board[row,:] == player_id, board[row,:] == -1)).ravel()
-                    selected = selected[selected >= col][0]
-
-                    if selected == 0 or selected == 4:
-                        return True, ((selected,row), Move.LEFT)
-            if col < 4:
-                if board[row, col+1] == player_id and np.any(np.logical_or(board[row,:col] == player_id, board[row,:col] == -1)):
-                    selected = np.argwhere(np.logical_or(board[row,:] == player_id, board[row,:] == -1)).ravel()
-                    selected = selected[selected <= col][0]
-
-                    if selected == 0 or selected == 4:
-                        return True, ((selected,row), Move.RIGHT)
-
-                            
+            possible, action =  horizontal_slide(row, col, board, player_id)
+            if possible:
+                return possible, action  
     #horizontal
     for row in range(5):
         if np.sum(board[row, :] == player_id) == 4:
             col = np.argwhere(board[row,:] != player_id).ravel()[0]
-            if row > 0:
-                if board[row - 1, col] == player_id and np.any(np.logical_or(board[row:,col] == player_id, board[row:,col] == -1)):
-                    selected = np.argwhere(np.logical_or(board[:,col] == player_id, board[:,col] == -1)).ravel()
-                    selected = selected[selected >= row][0]
+            possible, action =  vertical_slide(row, col, board, player_id)
+            if possible:
+                return possible, action
 
-                    if selected == 0 or selected == 4:
-                        return True, ((col,selected), Move.TOP)
-            if row < 4:
-                if board[row + 1, col] == player_id and np.any(np.logical_or(board[:row,col] == player_id, board[:row,col] == -1)):
-                    selected = np.argwhere(np.logical_or(board[:,4] == player_id, board[:,4] == -1)).ravel()
-                    selected = selected[selected <= row][0]
-
-                    if selected == 0 or selected == 4:
-                        return True, ((col,selected), Move.BOTTOM)
             
     #Diagonal
-    if board[0][0] + board[1][1] + board[2][2] + board[3][3] == 4:
-        if board[3][4] == player_id and board[4][4] == -1:
-            return True, ((4,4), Move.TOP)
-        if board[4][3] == player_id and board[4][4] == -1:
-            return True, ((4,4), Move.LEFT)
-    
-    if board[1][1] + board[2][2] + board[3][3] + board[4][4] == 4:
-        if board[0][1] == player_id and board[0][0] == -1:
-            return True, ((0,0), Move.RIGHT)
-        if board[1][0] == player_id and board[0][0] == -1:
-            return True, ((0,0), Move.BOTTOM)
-    
-    if board[0][4] + board[1][3] + board[2][2] + board[3][1] == 4:
-        if board[3][0] == player_id and board[4][0] == -1:
-            return True, ((0,4), Move.TOP)
-        if board[4][1] == player_id and board[4][0] == -1:
-            return True, ((0,4), Move.RIGHT)
-    
-    if board[1][3] + board[2][2] + board[3][1] + board[4][0] == 4:
-        if board[0][3] == player_id and board[0][4] == -1:
-            return True, ((4,0), Move.LEFT)
-        if board[1][4] == player_id and board[0][4] == -1:
-            return True, ((4,0), Move.BOTTOM)
-    
+    if np.sum(np.diag(board) == player_id) == 4:
+        diag_pos = np.argwhere(np.diag(board) != player_id).ravel()[0]
+        possible, action = horizontal_slide(diag_pos, diag_pos, board, player_id)
+        if possible:
+            return possible, action
+        possible, action = vertical_slide(diag_pos, diag_pos, board, player_id)
+        if possible:
+            return possible, action
+        
+    if np.sum(np.diag(np.flip(board, axis=1)) == player_id) == 4:
+        diag_pos = np.argwhere(np.diag(np.flip(board, axis=1)) != player_id).ravel()[0]
+        possible, action = horizontal_slide(diag_pos, 4 - diag_pos, board, player_id)
+        if possible:
+            return possible, action
+        possible, action = vertical_slide(diag_pos, 4 - diag_pos, board, player_id)
+        if possible:
+            return possible, action
+        
     return False, None
         
+def horizontal_slide(row, col, board, player_id):
+    if col == 0:
+        if row == 0 or row == 4:
+            selected = np.argwhere(np.logical_or(board[row,:] == player_id, board[row,:] == -1)).ravel()
+            selected = selected[selected > col][0]
 
-        
+            return True, ((selected, row), Move.LEFT)
+        else:
+            if board[row][4] == player_id or board[row][4] == -1:
+                return True, ((4,row), Move.LEFT)
+
+    if col == 4:
+        if row == 0 or row == 4:
+            selected = np.argwhere(np.logical_or(board[row,:] == player_id, board[row,:] == -1)).ravel()
+            selected = selected[selected < col][0]
+
+            return True, ((selected, row), Move.RIGHT)
+        else:
+            if board[row][0] == player_id or board[row][0] == -1:
+                return True, ((0,row), Move.RIGHT)
+
+    if col > 0:
+        if board[row, col-1] == player_id and np.any(np.logical_or(board[row,col:] == player_id, board[row,col:] == -1)):
+            selected = np.argwhere(np.logical_or(board[row,:] == player_id, board[row,:] == -1)).ravel()
+            selected = selected[selected >= col][0]
+
+            if row != 0 and row != 4:
+                if selected == 4:
+                    return True, ((selected, row), Move.LEFT)
+            else:
+                    return True, ((selected, row), Move.LEFT)
+
+    if col < 4:
+        if board[row, col+1] == player_id and np.any(np.logical_or(board[row,:col] == player_id, board[row,:col] == -1)):
+            selected = np.argwhere(np.logical_or(board[row,:] == player_id, board[row,:] == -1)).ravel()
+            selected = selected[selected <= col][0]
+
+            if row != 0  and row != 4:
+                if selected == 0:
+                        return True, ((selected,row), Move.RIGHT)
+            else:
+                    return True, ((selected,row), Move.RIGHT)
+    
+    return False, None
+
+def vertical_slide(row, col, board, player_id):
+    if row == 0:
+        if col == 0 or col == 4:
+            selected = np.argwhere(np.logical_or(board[:,col] == player_id, board[:,col] == -1)).ravel()
+            selected = selected[selected > row][0]
+
+            return True, ((col, selected), Move.TOP)
+        else:
+            if board[4][col] == player_id or board[4][col] == -1:
+                return True, ((col,4), Move.TOP)
+
+    if row == 4:
+        if col == 0 or col == 4:
+            selected = np.argwhere(np.logical_or(board[:,col] == player_id, board[:,col] == -1)).ravel()
+            selected = selected[selected < row][0]
+
+            return True, ((col, selected), Move.BOTTOM)
+        else:
+            if board[0][col] == player_id or board[0][col] == -1:
+                return True, ((col,0), Move.BOTTOM)
+            
+    if row > 0:
+        if board[row - 1, col] == player_id and np.any(np.logical_or(board[row:,col] == player_id, board[row:,col] == -1)):
+            selected = np.argwhere(np.logical_or(board[:,col] == player_id, board[:,col] == -1)).ravel()
+            selected = selected[selected >= row][0]
+
+            if col != 0 and col != 4:
+                if selected == 4:
+                    return True, ((col,selected), Move.TOP)
+            else:
+                    return True, ((col,selected), Move.TOP)
+    if row < 4:
+        if board[row + 1, col] == player_id and np.any(np.logical_or(board[:row,col] == player_id, board[:row,col] == -1)):
+            selected = np.argwhere(np.logical_or(board[:,col] == player_id, board[:,col] == -1)).ravel()
+            selected = selected[selected <= row][0]
+
+            if col != 0  and col != 4:
+                if selected == 0:
+                    return True, ((col,selected), Move.BOTTOM)
+            else:
+                    return True, ((col, selected), Move.BOTTOM)
+    return False, None
+    
+
+
 if __name__ == '__main__':
     for i in range(0,4):
         print(rotate_and_flip((3,0),i))
