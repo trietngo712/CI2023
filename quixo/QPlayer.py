@@ -20,25 +20,26 @@ class QPlayer(Player):
         self.agent = None
         self.env = None
         self.minmax = MinMax()
+        self.play_as = 'X'
 
     def make_move(self, game: 'Game') -> tuple[tuple[int, int], Move]:
         #from_pos = (random.rand
         #int(0, 4), random.randint(0, 4))
         #move = random.choice([Move.TOP, Move.BOTTOM, Move.LEFT, Move.RIGHT])
         #return from_pos, move
-        self.env.current_player = 'X'
-        player_id = 0
+        player_id = 0 if self.play_as == 'X' else 1
         state = tuple(self.env.game.get_board().flatten().tolist())
         #self.env.game.print()
+        self.env.current_player = self.play_as
         available_moves = self.env.available_moves()
         going_to_win, action = one_move_to_win(self.env, player_id)
         if not going_to_win:
-            action = self.agent.choose_action(state, available_moves, play_as = 'X', playing = True)
+            action = self.agent.choose_action(state, available_moves, play_as = self.play_as, playing = True)
             if action is None:
                 print('----------------------------use minmax---------------------------')
-                action = self.minmax.make_move(game)
+                action = self.minmax.make_move(game, self.play_as)
         else:
-            print('-------------------one move for X to win-----------------------')
+            print(f'-------------------one move for {self.play_as} to win-----------------------')
             print(action)
         return action
 
@@ -157,8 +158,14 @@ class QLearningAgent:
 
                 return a
             else:
-                return min(available_moves, key=lambda a: self.get_q_value(state, a))
-            
+                a = min(available_moves, key=lambda a: self.get_q_value(state, a))
+                self.total += 1
+                if self.get_q_value(state, a) < 0:
+                    self.usefullness += 1
+                else:
+                    return None
+
+                return a            
 class RandomAgent:
     def __init__(self):
         pass
